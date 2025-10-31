@@ -1,10 +1,13 @@
 from openai import OpenAI
+import os
 import streamlit as st
 from document_search import scan_dummy_data, search_files, render_results, looks_like_search
 
 st.title("Apocrypha Document Retrieval Demo")
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# Read API key from Streamlit Secrets (Cloud) or environment variable (local)
+_api_key = st.secrets.get("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=_api_key)
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"
