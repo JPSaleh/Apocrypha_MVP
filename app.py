@@ -5,9 +5,21 @@ from document_search import scan_dummy_data, search_files, render_results, looks
 
 st.title("Apocrypha Document Retrieval Demo")
 
-# Read API key from Streamlit Secrets (Cloud) or environment variable (local)
-_api_key = st.secrets.get("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY"))
-client = OpenAI(api_key=_api_key)
+# Read API credentials from Streamlit Secrets (Cloud) or environment variables (local)
+_api_key = st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+_org_id = st.secrets.get("OPENAI_ORG_ID") or os.environ.get("OPENAI_ORG_ID")
+_project_id = st.secrets.get("OPENAI_PROJECT_ID") or os.environ.get("OPENAI_PROJECT_ID")
+
+if not _api_key or not str(_api_key).strip():
+    st.error("OpenAI API key not found. Set OPENAI_API_KEY in Streamlit Secrets or as an environment variable.")
+    st.stop()
+
+client = OpenAI(api_key=_api_key, organization=_org_id, project=_project_id)
+
+# Non-sensitive status for diagnostics
+_key_src = "secrets" if "OPENAI_API_KEY" in st.secrets else ("env" if os.environ.get("OPENAI_API_KEY") else "unknown")
+_masked = f"sk-...{str(_api_key)[-6:]} (len {len(str(_api_key))})"
+st.caption(f"Using OpenAI key from {_key_src}; org={'set' if _org_id else 'unset'}, project={'set' if _project_id else 'unset'}; key={_masked}")
 
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"
@@ -118,15 +130,19 @@ if prompt := st.chat_input("What do you need help with?"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        stream = client.chat.completions.create(
-            model=st.session_state["openai_model"],
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
-        response = st.write_stream(stream)
+        try:
+            stream = client.chat.completions.create(
+                model=st.session_state["openai_model"],
+                messages=[
+                    {"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.messages
+                ],
+                stream=True,
+            )
+            response = st.write_stream(stream)
+        except Exception as e:
+            st.error("There was an issue contacting OpenAI. Please verify your API key in Secrets.")
+            response = "I’m ready when your API key is configured."
     st.session_state.messages.append({"role": "assistant", "content": response})
 
     # Lightweight retrieval: run after every assistant reply using sample_data index
