@@ -16,11 +16,6 @@ if not _api_key or not str(_api_key).strip():
 
 client = OpenAI(api_key=_api_key, organization=_org_id, project=_project_id)
 
-# Non-sensitive status for diagnostics
-_key_src = "secrets" if "OPENAI_API_KEY" in st.secrets else ("env" if os.environ.get("OPENAI_API_KEY") else "unknown")
-_masked = f"sk-...{str(_api_key)[-6:]} (len {len(str(_api_key))})"
-st.caption(f"Using OpenAI key from {_key_src}; org={'set' if _org_id else 'unset'}, project={'set' if _project_id else 'unset'}; key={_masked}")
-
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-3.5-turbo"
 
